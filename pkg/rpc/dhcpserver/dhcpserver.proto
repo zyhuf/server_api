@@ -1,0 +1,338 @@
+syntax = "proto3";
+package dhcpserver;
+
+//服务配置
+service ServiceConfig {
+    //子网列表
+    rpc GetSubnet(ReqStatus) returns (SubnetInfos) {}
+    rpc OperateSubnet(SubnetInfos) returns (RespResult) {}
+
+    //IPv4/IPv6静态绑定
+    rpc GetStatic(ReqStatus) returns (IpStaticInfos) {}
+    rpc OperateStatic(IpStaticInfos) returns (RespResult) {}
+}
+
+//通用请求
+message ReqStatus {
+    uint64 index = 1;  //指定序号的记录
+}
+
+//子网列表
+message SubnetInfos {
+    OperationType operate_type = 1;  //操作类型
+    repeated SubnetInfo ev = 2;      //记录（增删改操作）
+}
+
+enum SubnetType {
+    invalid_subnet = 0;
+    auth_subnet = 1; //授权
+    access_subnet = 2;//访客
+}
+
+message SubnetInfo {
+    uint64 index = 1;                //记录序号
+    string name = 2;                 //子网名称
+    int32 vlan_id = 3;               //子网id
+    SubnetType type = 4;             //子网类型
+    ListType bw_type = 5;            //子网黑白名单类型
+    uint32 subnet_valid = 6;         //子网有效期
+    V4SubInfo v4_sub = 7;            //v4子网
+    V6SubInfo v6_sub = 8;            //v6子网
+}
+
+message NetworkSegmentInfo {
+    uint64 index = 1;               //索引
+    string net = 2;                 //网段配置
+}
+
+//v4子网
+message V4SubInfo {
+    repeated NetworkSegmentInfo netSegment = 1;//网段信息
+    repeated PoolInfo pool = 7;      //地址池
+}
+
+//v6子网
+message V6SubInfo {
+    repeated NetworkSegmentInfo netSegment = 1;//网段信息
+    repeated PoolInfo pool = 4;     //地址池
+    PDPrefixInfo pd_info = 5;       //PD前缀信息
+}
+
+//地址池
+message PoolInfo {
+    uint64 index = 1;               //记录序号
+    string beg = 4;                 //起始地址
+    string end = 5;                 //结束地址
+}
+//PD前缀信息
+message PDPrefixInfo {
+    string start_prefix = 1;
+    string end_prefix = 2;
+}
+
+//静态绑定
+message IpStaticInfos {
+    OperationType operate_type = 1;     //操作类型
+    repeated IpStaticInfo ev = 2;       //记录（增删改操作）
+}
+
+message IpStaticInfo {
+    uint64 index = 1;               //记录序号
+    uint64 subnet_id = 2;         //子网ID
+    string mac = 3;                 //MAC地址
+    string duid = 4;                //DUID
+    string v4ip = 5;                //v4地址
+    string v6ip = 6;                //v6地址 
+}
+
+//访问控制
+service AccessControl {
+    rpc SetBlackAndWhiteList(stream BlackAndWhiteListReq) returns (RespResult) {} //设置黑白名单列表
+    rpc GetBlackAndWhiteList(GetBWListReq) returns (stream GetBWListResp) {} //得到黑白名单列表
+    rpc SetBWListStatus(StatusBWListReq) returns (RespResult) {} //设置黑白名单启停状态
+}
+
+enum OperationType {
+    invalid_type = 0;
+    add_type = 1;
+    delete_type = 2;
+    modify_type = 3;
+}
+
+enum ListType {
+    invalid_list = 0;
+    black_list = 1;
+    white_list = 2;
+}
+
+enum Status {
+    invalid_status = 0;
+    enable_status = 1;
+    disable_stauts = 2;
+}
+
+//错误码和错误描述
+message RespResult {
+    int32 result_code = 1;
+    string description = 2;
+}
+
+message BlackAndWhiteListInfo {
+    uint64 index = 1;
+    ListType list_type = 2;
+    string mac_address = 3;
+    string user_name = 4;
+    uint64 subnet_id = 5;
+    string notes = 6;
+    Status status = 7;
+}
+
+message BlackAndWhiteListReq {
+    OperationType oper_type = 1;
+    repeated BlackAndWhiteListInfo list_info = 2;
+}
+
+//index可以0，list_type必须有效
+message GetBWListReq {
+    uint64 index = 1;
+    ListType list_type = 2;
+}
+
+message GetBWListResp {
+    repeated BlackAndWhiteListInfo resp_list = 1;
+}
+
+message StatusBWListReq {
+    uint64 index = 1;
+    ListType list_type = 2;
+    Status status = 3;
+}
+
+//故障转移
+service FailoverManager {
+    rpc SetServerCfg(stream SetServerCfgReq) returns (RespResult) {} //配置服务器
+    rpc GetServerCfg(GetServerCfgReq) returns (stream GetServerCfgResp) {} //得到服务器配置
+}
+
+enum ServerType {
+    invalid_server = 0;
+    master_server = 1;
+    slave_server = 2;
+}
+
+message ServerCfgInfo {
+    uint64 index = 1;
+    ServerType server_type = 2;
+    string local_address = 3;
+    uint32 local_port = 4;
+    string peer_address = 5;
+    uint32 peer_port = 6;
+    uint64 monitor_time = 7;
+    uint32 max_update_times = 8;
+    uint64 max_load_balancing_time = 9;
+    uint64 auto_update_lease_time = 10;
+    uint32 separate_digit = 11;
+}
+
+message SetServerCfgReq {
+    OperationType oper_type = 1;
+    repeated ServerCfgInfo server_config = 2;
+}
+
+//index可以0，server_type必须有效
+message GetServerCfgReq {
+    uint64 index = 1;
+    ServerType server_type = 2;
+}
+
+message GetServerCfgResp {
+    repeated ServerCfgInfo resp_server = 1;
+}
+
+//授权管理
+service AuthManager {
+    rpc SetAuthCfg(stream AuthCfgReq) returns (RespResult) {} //授权配置
+    rpc GetAuthCfg(GetAuthCfgReq) returns (stream GetAuthCfgResp) {} //得到授权配置
+    rpc SetAuthStatus(StatusAuthReq) returns (RespResult) {} //设置授权配置启停状态
+    rpc SetDisableUserList(stream DisableUserListReq) returns (RespResult) {} //黑户列表
+    rpc GetDisableUserList(ReqStatus) returns (stream DisableUserListRsp) {} //查询黑户列表
+}
+
+enum AuthType {
+    invalid_auth = 0;
+    perpetual_auth = 1;
+    temporary_auth = 2;
+}
+
+message AuthCfgInfo {
+    uint64 index = 1;
+    AuthType type = 2;
+    string mac_address = 3;
+    string user_name = 4;
+    uint32 expire_time = 5;
+    string expire_date = 6;
+    string notes = 7;
+    Status status = 8;
+}
+
+message AuthCfgReq {
+    OperationType oper_type = 1;
+    repeated AuthCfgInfo auth_config = 2;
+}
+
+message GetAuthCfgReq {
+    uint64 index = 1;
+    AuthType type = 2;
+}
+
+message GetAuthCfgResp {
+    repeated AuthCfgInfo resp_auth = 1;
+}
+
+message StatusAuthReq {
+    uint64 index = 1;
+    AuthType type = 2;
+    Status status = 3;
+}
+
+message DisableUserListInfo {
+    uint64 index = 1;
+    string mac_address = 2;
+    string user_name = 3;
+}
+
+message DisableUserListReq {
+    OperationType oper_type = 1;
+    repeated DisableUserListInfo cfg_info = 2;
+}
+
+message DisableUserListRsp {
+    repeated DisableUserListInfo cfg_info = 1;
+}
+
+//地址调和管理
+service AddressReconcileManager {
+    rpc SetAddressInspectCfg(InspectCfgReq) returns (RespResult) {} //核查周期配置
+}
+
+message InspectCfgReq {
+    uint32 inspect_cycle = 1;
+}
+
+service DevicePerformance {
+    //获取设备的性能信息
+    rpc GetDeviceInfo(GetDeviceInfoReq) returns (GetDeviceInfoRsp) {}
+}
+
+//device info
+message GetDeviceInfoReq {
+	repeated string ip_addr = 1;
+}
+
+message DeviceStatInfo {
+    string ip_addr = 1;
+    float cpu_usage_rate = 2; //CPU使用率
+    float memory_usage_rate = 3; //内存使用率
+    float disk_usage_rate = 4; //磁盘使用率
+}
+
+message GetDeviceInfoRsp {
+    repeated DeviceStatInfo statInfo = 1;
+}
+
+service FingerprintManager {
+    //指纹信息下发
+    rpc SetFingerprint(FingerprintReq) returns (RespResult) {}
+    rpc GetFingerprint(ReqStatus) returns (FingerprintRsp) {}
+}
+
+message FingerprintInfo {
+    uint64 index = 1;
+    uint32 ttl = 2;
+    string options = 3;
+    uint32 option_id = 4;
+    string option_value = 5;
+    ProtocolType protocol_type = 6;
+    int32 message_type = 7;
+    string supplier = 8;
+    string system_name = 9;
+}
+
+message FingerprintReq {
+    OperationType oper_type = 1;
+    repeated FingerprintInfo cfg_info = 2;
+}
+
+message FingerprintRsp {
+    repeated FingerprintInfo cfg_info = 1;
+}
+
+service OptionsManager {
+    //options 配置
+    rpc SetOptions(OptionsReq) returns (RespResult) {}
+    rpc GetOptions(ReqStatus) returns (OptionsRsp) {}
+}
+
+enum ProtocolType {
+    invalid_ProtocolType = 0;
+    DHCPv4_ProtocolType = 1;
+    DHCPv6_ProtocolType = 2;
+}
+
+message OptionsInfo {
+    uint64 index = 1;
+    uint32 option_id = 2;
+    string option_name = 3;
+    string option_value = 4;
+    ProtocolType protocol_type = 5;
+    uint64 subnet_id = 6;
+}
+
+message OptionsReq {
+    OperationType oper_type = 1;
+    repeated OptionsInfo info = 2;
+}
+
+message OptionsRsp {
+    repeated OptionsInfo info = 1;
+}

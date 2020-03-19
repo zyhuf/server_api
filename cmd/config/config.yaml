@@ -1,0 +1,11 @@
+#提供服务的地址和端口
+serveraddr: 0.0.0.0:50057
+#agent程序提供的地址和端口
+dhcpagentaddr:
+  - 127.0.0.1:50056
+  - 127.0.0.1:50055
+#etcd提供访问的地址和端口
+dbaddr:
+  - localhost:2379
+#etcd存储数据的key前缀
+keyprefix: /project_nm/version1_0_0/DDI/

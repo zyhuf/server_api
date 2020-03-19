@@ -1,0 +1,10 @@
+[Unit]
+Description=server-api Process
+
+[Service]
+ExecStart=/opt/reyzar/server-api/server-api
+Type=simple
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

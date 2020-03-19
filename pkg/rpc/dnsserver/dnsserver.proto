@@ -1,0 +1,150 @@
+syntax = "proto3";
+package dnsserver;
+
+//域名管理
+service DnsManager {
+    //正向域名
+    rpc GetForward(ReqStatus) returns (ForwardInfos) {}
+    rpc OperateForward(ForwardInfos) returns (RespStatus) {}
+    //正向域名记录
+    rpc GetDomain(ForwardRefer) returns (DomainInfos) {}
+    rpc OperateDomain(DomainInfos) returns (RespStatus) {}
+    //正向域名记录使能
+    rpc EnableDomain(ForwardEnableMsg) returns (RespStatus) {}
+
+    //转发配置
+    rpc GetTransfer(ReqStatus) returns (TransferInfos) {}
+    rpc OperateTransfer(TransferInfos) returns (RespStatus) {}
+    //转发使能
+    rpc EnableTransfer(EnableInfos) returns (RespStatus) {}
+    
+     //服务配置
+    rpc GetSysConf(ReqStatus) returns (SysConfs) {}
+    rpc UpdateSysConf(SysConfs) returns (RespStatus) {}
+    rpc QueryServiceIP(ReqStatus) returns(RespServiceIP) {}
+    
+    //正向域名记录解析状态
+    rpc GetForwardStatus(ForwardStatusInfos) returns (ForwardStatusInfos) {}
+}
+
+//操作类型
+enum OperType {
+    NONE = 0;                       //无操作或者查询
+    ADD = 1;                        //插入
+    DEL = 2;                        //删除
+    MOD = 3;                        //修改
+}
+
+message ForwardRefer {
+    uint64 domain_id = 1;          //记录序号(DomainInfo--id)
+    uint64 forward_id = 2;         //正向域名序号(ForwardInfo--id)
+}
+
+message ForwardEnableMsg {
+    ForwardRefer refer = 1;
+    bool enable = 2;
+}
+
+//通用响应,0为成功,非0失败
+//{1001, "Access etcd failed."} {1002, "The index is invalid."}
+//{1003, "Invalid parameter."} {1004, "The record does not exist."}
+message ReqStatus {
+    repeated uint64 id = 1;         //记录id
+}
+
+//通用响应
+message RespStatus {
+    int32 code= 1;                  //状态码
+    string msg= 2;                  //状态信息
+}
+
+//正向域名信息
+message ForwardInfos {
+    OperType operate_type = 1;      //操作类型
+    repeated ForwardInfo ev = 2;    //记录（新增、编辑、删除操作使用）
+}
+
+message ForwardInfo {
+    uint64 id = 1;                  //记录序号
+    string domain = 2;              //域名
+    string reference = 3;           //备注
+}
+
+//正向域名记录信息
+message DomainInfos {
+    OperType operate_type = 1;      //操作类型
+    repeated DomainInfo ev = 2;     //记录（新增、编辑、删除操作使用）
+}
+
+message DomainInfo {
+    uint64 id = 1;                  //记录序号
+    uint64 for_id = 2;              //域名记录序号(ForwardInfo--id)
+    string name = 3;                //记录主机名
+    string type = 4;                //记录类型
+    uint64 isp_id = 5;              //解析路线（关联到智能链路--链路类型）
+    string value = 6;               //记录值
+    int32 ttl = 7;                  //记录时间
+    int32 mx = 8;                   //MX优先级（只有MX类型使用，范围1 - 50，其他类型用0填充）
+    bool enable = 9;                //记录使能
+}
+
+//使能信息
+message EnableInfos {
+    uint64 id = 1;                  //记录序号
+    bool enable = 2;                //记录使能
+}
+
+//递归解析信息
+message RecursionInfo {
+    bool recursion_enable = 1;      //递归使能
+    bool dns46_enable = 2;          //dns46模块
+    bool dns64_enable = 3;          //dns64模块
+    bool dns64_synthall = 4;        //dns64把所有A合成AAAA
+    string dns64_prefix = 5;        //dns64合成前缀（dns64模块启用时必须填）
+    string jump_addr = 6;           //跳转地址
+}
+
+//转发配置信息
+message TransferInfos {
+    OperType operate_type = 1;      //操作类型
+    repeated TransferInfo ev = 2;   //记录（新增、编辑、删除操作使用）
+}
+
+message TransferInfo {
+    uint64 id = 1;                  //记录序号
+    string domain = 2;              //域名
+    string ip = 3;                  //转发ip
+    bool enable = 4;                //状态使能
+    string reference = 5;           //备注
+}
+
+//服务配置信息
+message SysConfs {
+    SysConf sys = 1;                //服务配置
+    RecursionInfo info = 2;         //解析控制
+    repeated ServiceIPInfo ip = 3;  //服务IP记录
+}
+
+message SysConf {
+    int32 port = 1;                 //系统端口
+    bool cname_priority = 2;        //cname是否优先于A/AAAA同名记录返回的使能
+    bool tcp_enable = 3;            //tcp查询
+}
+
+message ServiceIPInfo {
+    string ip = 1;                  //服务ip
+}
+
+//正向域名记录解析状态
+message ForwardStatusInfos {
+    repeated ForStatusInfo ev = 1;   //记录（每组请求只需提供for_id、id参数）
+}
+
+message ForStatusInfo {
+    ForwardRefer refer = 1;
+    int32 status = 2;               //解析状态(0：正常，-1：异常）
+}
+
+message RespServiceIP {
+    repeated ServiceIPInfo ip = 1;
+}

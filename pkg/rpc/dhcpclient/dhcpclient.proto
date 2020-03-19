@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package dhcpclient;
+
+service DevicePerformance {
+    //获取设备的性能信息
+    rpc GetDeviceInfo(GetDeviceInfoReq) returns (GetDeviceInfoRsp) {}
+}
+
+//device info
+message GetDeviceInfoReq {
+	repeated string ip_addr = 1;
+}
+
+message GetDeviceInfoRsp {
+    string ip_addr = 1;
+    float cpu_usage_rate = 2; //CPU使用率
+    float memory_usage_rate = 3; //内存使用率
+    float disk_usage_rate = 4; //磁盘使用率
+}
